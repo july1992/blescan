@@ -199,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         SharedPreferencesUtil.saveString(MainActivity.this,"ip",trim2);
         SharedPreferencesUtil.saveString(MainActivity.this,"value",value);
 
-        Log.i(TAG, "senBle: --------2");
+        Log.i(TAG, "senBle: --------ip:"+trim2+"-----value:"+value);
 
         BleManager.getInstance().scan(new BleScanCallback() {
             @Override
@@ -228,8 +228,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mPb_progress.setVisibility(View.GONE);
                 for (BleDevice bleDevice : scanResultList) {
 
-                    Log.i(TAG, "onScanFinished:------------ " + bleDevice.getName() + "-------" + bleDevice.getRssi() + "-------" +
-                            bleDevice.getMac() + "-------" + bleDevice.getKey());
+//                    Log.i(TAG, "onScanFinished:------------ " + bleDevice.getName() + "-------" + bleDevice.getRssi() + "-------" +
+//                            bleDevice.getMac() + "-------" + bleDevice.getKey());
                     BleBean bleBean=new BleBean(bleDevice.getName(),bleDevice.getMac(),bleDevice.getRssi());
 
                     mList.add(bleBean);
@@ -249,6 +249,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         try {
             String encode = URLEncoder.encode(json, "utf-8");
 
+            Log.i(TAG, "request: -----------ecode:"+encode);
 
             OkHttpUtils
                 .get()
