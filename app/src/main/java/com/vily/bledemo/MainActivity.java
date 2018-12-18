@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     REQUEST_CODE_ACCESS_COARSE_LOCATION);
         }
 
-        if(isLocationEnable(MainActivity.this)){
+        if(!isLocationEnable(MainActivity.this)){
             Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
             this.startActivityForResult(locationIntent, REQUEST_CODE_LOCATION_SETTINGS);
         }
@@ -120,6 +120,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void initData() {
+
+        String ip = SharedPreferencesUtil.getString(MainActivity.this, "ip", "");
+        String value = SharedPreferencesUtil.getString(MainActivity.this, "value", "");
+        if(!TextUtils.isEmpty(ip)){
+
+            mEt_ip.setText(ip);
+        }
+        if(!TextUtils.isEmpty(value)){
+            mEt_value.setText(value);
+        }
+
         mBtn_send.setOnClickListener(this);
         mBtn_send_loop.setOnClickListener(this);
         mBtn_cancel.setOnClickListener(this);
@@ -133,11 +144,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRv_recycle.addItemDecoration(new DividerItemDecoration(MainActivity.this,DividerItemDecoration.VERTICAL));
         mBleAdapter = new BleAdapter();
         mRv_recycle.setAdapter(mBleAdapter);
+
+
     }
 
 
     @Override
     public void onClick(View v) {
+        initPermission();
+        checkBleDevice();
+
+
         switch (v.getId()) {
 
             case R.id.btn_send:   //  发送
@@ -167,7 +184,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         String value = mEt_value.getText().toString().trim();
 
 
-
         Log.i(TAG, "senBle: ------");
         if (TextUtils.isEmpty(trim2)) {
 
@@ -179,6 +195,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(getApplicationContext(), "value 不能为空", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        SharedPreferencesUtil.saveString(MainActivity.this,"ip",trim2);
+        SharedPreferencesUtil.saveString(MainActivity.this,"value",value);
 
         Log.i(TAG, "senBle: --------2");
 
@@ -305,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (isLocationEnable(this)) {
                 //定位已打开的处理
 
-                senBle();
+//                senBle();
             } else {
                 //定位依然没有打开的处理
                 Toast.makeText(getApplicationContext(),"去打开蓝牙和GPS定位",Toast.LENGTH_SHORT).show();
