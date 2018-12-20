@@ -57,14 +57,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Retrofit mRetrofit;
     private ProgressBar mPb_progress;
 
-    private boolean loop=false;
+    private boolean loop = false;
 
-    private List<BleBean> mList=new ArrayList<>();
+    private List<BleBean> mList = new ArrayList<>();
     private RecyclerView mRv_recycle;
     private BleAdapter mBleAdapter;
-    private long mStartTime=0;
-    private long mTime=100;
+    private long mStartTime = 0;
+    private long mTime = 100;
     private EditText mEt_time;
+
+    private int mCount = 0;
+
+    private boolean first=true;
+    private String mTrim2;
+    private String mValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,7 +99,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     REQUEST_CODE_ACCESS_COARSE_LOCATION);
         }
 
-        if(!isLocationEnable(MainActivity.this)){
+        if (!isLocationEnable(MainActivity.this)) {
             Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
             this.startActivityForResult(locationIntent, REQUEST_CODE_LOCATION_SETTINGS);
         }
@@ -105,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 //        boolean networkProvider = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
         boolean gpsProvider = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        if ( gpsProvider) return true;
+        if (gpsProvider) return true;
         return false;
     }
 
@@ -129,11 +135,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         String ip = SharedPreferencesUtil.getString(MainActivity.this, "ip", "");
         String value = SharedPreferencesUtil.getString(MainActivity.this, "value", "");
-        if(!TextUtils.isEmpty(ip)){
+        if (!TextUtils.isEmpty(ip)) {
 
             mEt_ip.setText(ip);
         }
-        if(!TextUtils.isEmpty(value)){
+        if (!TextUtils.isEmpty(value)) {
             mEt_value.setText(value);
         }
 
@@ -147,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
         mRv_recycle.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-        mRv_recycle.addItemDecoration(new DividerItemDecoration(MainActivity.this,DividerItemDecoration.VERTICAL));
+        mRv_recycle.addItemDecoration(new DividerItemDecoration(MainActivity.this, DividerItemDecoration.VERTICAL));
         mBleAdapter = new BleAdapter();
         mRv_recycle.setAdapter(mBleAdapter);
 
@@ -160,56 +166,59 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         String time = mEt_time.getText().toString().trim();
         long l = Long.parseLong(time);
-        mTime=l;
+        mTime = l;
         initPermission();
         checkBleDevice();
+        mTrim2 = mEt_ip.getText().toString().trim();
+        mValue = mEt_value.getText().toString().trim();
+
+
+        Log.i(TAG, "senBle: ------");
+        if (TextUtils.isEmpty(mTrim2)) {
+
+            Toast.makeText(getApplicationContext(), "ip不能为空", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (TextUtils.isEmpty(mValue)) {
+
+            Toast.makeText(getApplicationContext(), "value 不能为空", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        SharedPreferencesUtil.saveString(MainActivity.this, "ip", mTrim2);
+        SharedPreferencesUtil.saveString(MainActivity.this, "value", mValue);
 
 
         switch (v.getId()) {
 
             case R.id.btn_send:   //  发送
 
-                loop=false;
+                loop = false;
 
 
                 senBle();
 
                 break;
             case R.id.btn_send_loop:   // 定时发送
-                loop=true;
+                loop = true;
                 senBle();
                 break;
             case R.id.btn_cancel:  // 停止定时发送
-
+                loop = false;
+                mList.clear();
                 BleManager.getInstance().cancelScan();
-                loop=false;
+                mBtn_send.setEnabled(true);
+                mBtn_send_loop.setEnabled(true);
+
                 break;
             default:
                 break;
         }
     }
 
-    private void senBle() {
-        String trim2 = mEt_ip.getText().toString().trim();
-        String value = mEt_value.getText().toString().trim();
+    private synchronized void senBle() {
 
-
-        Log.i(TAG, "senBle: ------");
-        if (TextUtils.isEmpty(trim2)) {
-
-            Toast.makeText(getApplicationContext(), "ip不能为空", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if(TextUtils.isEmpty(value)){
-
-            Toast.makeText(getApplicationContext(), "value 不能为空", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        SharedPreferencesUtil.saveString(MainActivity.this,"ip",trim2);
-        SharedPreferencesUtil.saveString(MainActivity.this,"value",value);
-
-        Log.i(TAG, "senBle: --------ip:"+trim2+"-----value:"+value);
+        Log.i(TAG, "senBle: --------ip:" + mTrim2 + "-----value:" + mValue);
 
         BleManager.getInstance().scan(new BleScanCallback() {
             @Override
@@ -222,103 +231,99 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mBtn_send.setEnabled(false);
                 mBtn_send_loop.setEnabled(false);
 
-                mStartTime= SystemClock.currentThreadTimeMillis();
-                Log.i(TAG, "onScanStarted: -------"+mStartTime);
+                mStartTime = System.currentTimeMillis();
+                Log.i(TAG, "onScanStarted: -------" + mStartTime);
+                first=true;
             }
 
             @Override
             public void onScanning(BleDevice bleDevice) {
-                // 扫描到一个符合扫描规则的BLE设备
-                BleBean bleBean=new BleBean(bleDevice.getName(),bleDevice.getMac(),bleDevice.getRssi());
-                mBleAdapter.addData(bleBean);
 
-                long currTime = SystemClock.currentThreadTimeMillis();
 
-                if(currTime-mStartTime > mTime){
-                    Log.i(TAG, "onScanning: ------------onScanning:"+currTime);
-                    BleManager.getInstance().cancelScan();
+                long currTime = System.currentTimeMillis();
+                if(first){
+                    // 扫描到一个符合扫描规则的BLE设备
+                    BleBean bleBean = new BleBean(bleDevice.getName(), bleDevice.getMac(), bleDevice.getRssi());
+                    mList.add(bleBean);
+                    mBleAdapter.addData(bleBean);
+                    if (currTime - mStartTime > mTime) {
+                        first=false;
+                        Log.i(TAG, "onScanning: ------------onScanning:" + currTime+"------用时："+ (currTime-mStartTime));
+                        BleManager.getInstance().cancelScan();
+                    }
                 }
-
             }
 
             @Override
             public void onScanFinished(List<BleDevice> scanResultList) {
+                Log.i(TAG, "onScanFinished: -------走这里了吗");
                 // 扫描结束，列出所有扫描到的符合扫描规则的BLE设备（主线程）
-                long currTime = SystemClock.currentThreadTimeMillis();
-                Log.i(TAG, "onScanning: ------------onScanFinished:"+currTime);
                 mPb_progress.setVisibility(View.INVISIBLE);
-                for (BleDevice bleDevice : scanResultList) {
 
-//                    Log.i(TAG, "onScanFinished:------------ " + bleDevice.getName() + "-------" + bleDevice.getRssi() + "-------" +
-//                            bleDevice.getMac() + "-------" + bleDevice.getKey());
-                    BleBean bleBean=new BleBean(bleDevice.getName(),bleDevice.getMac(),bleDevice.getRssi());
-
-                    mList.add(bleBean);
-
-                }
                 // 去网络请求
-                mBleAdapter.setNewData(mList);
-                request(mList);
+                if(mList!=null && mList.size()>0){
+                    request(mList);
+                }else{
+                    if(loop){
 
-//                if(loop){
-//
-//                    senBle();
-//                }else{
-//                    mBtn_send.setEnabled(true);
-//                    mBtn_send_loop.setEnabled(true);
-//                }
+                        senBle();
+                    }
+                }
 
             }
         });
+
     }
 
-    private void request( List<BleBean> list) {
+    private void request(List<BleBean> list) {
         String json = JSON.toJSONString(list);
 
         try {
             String encode = URLEncoder.encode(json, "utf-8");
 
-            Log.i(TAG, "request: -----------ecode:"+encode);
+            Log.i(TAG, "request: -----------ecode:" + encode);
 
             OkHttpUtils
-                .get()
-                .url(mEt_ip.getText().toString().trim())
-                .addParams("data", encode)
-                .addParams("value", mEt_value.getText().toString().trim())
-                .build()
-                .execute(new Callback() {
-                    @Override
-                    public Object parseNetworkResponse(Response response, int id) throws Exception {
-                        return null;
-                        
-                    }
+                    .get()
+                    .url(mEt_ip.getText().toString().trim())
+                    .addParams("data", encode)
+                    .addParams("value", mEt_value.getText().toString().trim() + ":第" + (mCount++) + "次")
+                    .build()
+                    .execute(new Callback() {
+                        @Override
+                        public Object parseNetworkResponse(Response response, int id) throws Exception {
+                            return null;
 
-                    @Override
-                    public void onError(Call call, Exception e, int id) {
-
-                        Log.i(TAG, "onError: -------失败");
-                        Toast.makeText(getApplicationContext(),"上传失败",Toast.LENGTH_SHORT).show();
-                        if(loop){
-                            senBle();
-                        }else{
-                            mBtn_send.setEnabled(true);
-                            mBtn_send_loop.setEnabled(true);
                         }
 
-                    }
+                        @Override
+                        public void onError(Call call, Exception e, int id) {
 
-                    @Override
-                    public void onResponse(Object response, int id) {
-                        Log.i(TAG, "onResponse: ----------成功");
-                        Toast.makeText(getApplicationContext(),"上传成功",Toast.LENGTH_SHORT).show();
-                        if(loop){
-                            senBle();
-                        }else{
-                            mBtn_send.setEnabled(true);
-                            mBtn_send_loop.setEnabled(true);
+                            Log.i(TAG, "onError: -------失败");
+                            Toast.makeText(getApplicationContext(), "上传失败", Toast.LENGTH_SHORT).show();
+                            if (loop) {
+                                SystemClock.sleep(500);
+                                senBle();
+                            } else {
+                                mBtn_send.setEnabled(true);
+                                mBtn_send_loop.setEnabled(true);
+                            }
+
                         }
-                    }
-                });
+
+                        @Override
+                        public void onResponse(Object response, int id) {
+                            Log.i(TAG, "onResponse: ----------成功");
+                            Toast.makeText(getApplicationContext(), "上传成功", Toast.LENGTH_SHORT).show();
+                            if (loop) {
+                                SystemClock.sleep(500);
+                                senBle();
+                            } else {
+                                mBtn_send.setEnabled(true);
+                                mBtn_send_loop.setEnabled(true);
+                            }
+                        }
+                    });
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -357,7 +362,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                senBle();
             } else {
                 //定位依然没有打开的处理
-                Toast.makeText(getApplicationContext(),"去打开蓝牙和GPS定位",Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "去打开蓝牙和GPS定位", Toast.LENGTH_SHORT).show();
             }
         } else super.onActivityResult(requestCode, resultCode, data);
 
