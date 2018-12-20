@@ -63,6 +63,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private RecyclerView mRv_recycle;
     private BleAdapter mBleAdapter;
     private long mStartTime=0;
+    private long mTime=100;
+    private EditText mEt_time;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,6 +121,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mRv_recycle = findViewById(R.id.rv_recycle);
 
+        mEt_time = findViewById(R.id.et_time);
+
     }
 
     private void initData() {
@@ -153,6 +157,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View v) {
+
+        String time = mEt_time.getText().toString().trim();
+        long l = Long.parseLong(time);
+        mTime=l;
         initPermission();
         checkBleDevice();
 
@@ -225,7 +233,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mBleAdapter.addData(bleBean);
 
                 long currTime = SystemClock.currentThreadTimeMillis();
-                if(currTime-mStartTime > 100){
+
+                if(currTime-mStartTime > mTime){
                     Log.i(TAG, "onScanning: ------------onScanning:"+currTime);
                     BleManager.getInstance().cancelScan();
                 }
@@ -237,7 +246,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // 扫描结束，列出所有扫描到的符合扫描规则的BLE设备（主线程）
                 long currTime = SystemClock.currentThreadTimeMillis();
                 Log.i(TAG, "onScanning: ------------onScanFinished:"+currTime);
-                mPb_progress.setVisibility(View.GONE);
+                mPb_progress.setVisibility(View.INVISIBLE);
                 for (BleDevice bleDevice : scanResultList) {
 
 //                    Log.i(TAG, "onScanFinished:------------ " + bleDevice.getName() + "-------" + bleDevice.getRssi() + "-------" +

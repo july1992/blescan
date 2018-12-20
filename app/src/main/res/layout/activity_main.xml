@@ -36,18 +36,25 @@
             android:id="@+id/btn_send_loop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="定时发送（5秒）"/>
+            android:text="定时发送"/>
         <Button
             android:id="@+id/btn_cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="停止发送"/>
+        <EditText
+            android:id="@+id/et_time"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:text="100"/>
 
         <ProgressBar
             android:id="@+id/pb_progress"
             android:layout_width="30dp"
             android:layout_height="30dp"
-            android:visibility="gone"/>
+            android:visibility="invisible"/>
     </LinearLayout>
 
 
