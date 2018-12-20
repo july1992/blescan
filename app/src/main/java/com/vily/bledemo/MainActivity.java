@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -61,6 +62,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private List<BleBean> mList=new ArrayList<>();
     private RecyclerView mRv_recycle;
     private BleAdapter mBleAdapter;
+    private long mStartTime=0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // 初始化蓝牙扫描
         BleManager.getInstance().init(getApplication());
-        BleManager.getInstance().setOperateTimeout(5000);
+        BleManager.getInstance().setOperateTimeout(500);
 
 
         mRv_recycle.setLayoutManager(new LinearLayoutManager(MainActivity.this));
@@ -211,6 +213,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 mBtn_send.setEnabled(false);
                 mBtn_send_loop.setEnabled(false);
+
+                mStartTime= SystemClock.currentThreadTimeMillis();
+                Log.i(TAG, "onScanStarted: -------"+mStartTime);
             }
 
             @Override
@@ -218,13 +223,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // 扫描到一个符合扫描规则的BLE设备
                 BleBean bleBean=new BleBean(bleDevice.getName(),bleDevice.getMac(),bleDevice.getRssi());
                 mBleAdapter.addData(bleBean);
+
+                long currTime = SystemClock.currentThreadTimeMillis();
+                if(currTime-mStartTime > 100){
+                    Log.i(TAG, "onScanning: ------------onScanning:"+currTime);
+                    BleManager.getInstance().cancelScan();
+                }
+
             }
 
             @Override
             public void onScanFinished(List<BleDevice> scanResultList) {
                 // 扫描结束，列出所有扫描到的符合扫描规则的BLE设备（主线程）
-
-
+                long currTime = SystemClock.currentThreadTimeMillis();
+                Log.i(TAG, "onScanning: ------------onScanFinished:"+currTime);
                 mPb_progress.setVisibility(View.GONE);
                 for (BleDevice bleDevice : scanResultList) {
 
@@ -238,6 +250,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // 去网络请求
                 mBleAdapter.setNewData(mList);
                 request(mList);
+
+//                if(loop){
+//
+//                    senBle();
+//                }else{
+//                    mBtn_send.setEnabled(true);
+//                    mBtn_send_loop.setEnabled(true);
+//                }
 
             }
         });
